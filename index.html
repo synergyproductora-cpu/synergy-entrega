@@ -68,8 +68,8 @@
       margin-bottom: 10px;
     }
 
-    /* VIDEO THUMBNAIL CARD */
-    .video-card {
+    /* VIDEO EMBED */
+    #wrap-principal, #wrap-compartir {
       position: relative;
       max-width: 340px;
       margin: 0 auto;
@@ -77,39 +77,8 @@
       border-radius: 12px;
       overflow: hidden;
       background: #111c28;
-      cursor: pointer;
     }
-    .video-card img {
-      width: 100%; height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    .video-card .play-overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0,0,0,0.3);
-      gap: 12px;
-    }
-    .play-btn {
-      width: 68px; height: 68px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.93);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-    }
-    .play-btn svg { color: #1F3A5F; margin-left: 5px; }
-    .play-label {
-      color: #fff;
-      font-size: 13px;
-      font-weight: 500;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.7);
-    }
+
     .video-placeholder-empty {
       max-width: 340px;
       margin: 0 auto;
@@ -368,37 +337,20 @@
       modalBody.innerHTML = ""; // detiene el video al cerrar
     });
 
-    function crearVideoCard(id, label, wrapId, btnId) {
+    function cargarVideo(id, wrapId, btnId) {
       if (!id) return;
-      const thumb = "https://drive.google.com/thumbnail?id=" + id + "&sz=w800";
-      const preview = "https://drive.google.com/file/d/" + id + "/preview";
-
-      const card = document.createElement("div");
-      card.className = "video-card";
-      card.innerHTML =
-        '<img src="' + thumb + '" alt="' + label + '" onerror="this.style.opacity=0">' +
-        '<div class="play-overlay">' +
-          '<div class="play-btn"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>' +
-          '<span class="play-label">▶ Reproducir</span>' +
-        '</div>';
-
-      // Al tocar → abre modal con iframe
-      card.addEventListener("click", () => {
-        modalTitle.textContent = label;
-        modalBody.innerHTML = '<iframe src="' + preview + '" allowfullscreen allow="autoplay" style="width:100%;height:100%;border:none;"></iframe>';
-        modal.classList.add("active");
-      });
-
-      document.getElementById(wrapId).innerHTML = "";
-      document.getElementById(wrapId).appendChild(card);
-
+      const wrap = document.getElementById(wrapId);
+      wrap.innerHTML =
+        '<iframe src="https://drive.google.com/file/d/' + id + '/preview" ' +
+        'allowfullscreen allow="autoplay" ' +
+        'style="width:100%;height:100%;border:none;position:absolute;top:0;left:0;"></iframe>';
       const btn = document.getElementById(btnId);
       btn.href = "https://drive.google.com/uc?export=download&id=" + id;
       btn.style.display = "flex";
     }
 
-    crearVideoCard(idV1, "Video principal",      "wrap-principal", "btn-principal");
-    crearVideoCard(idV2, "Video para compartir", "wrap-compartir", "btn-compartir");
+    cargarVideo(idV1, "wrap-principal", "btn-principal");
+    cargarVideo(idV2, "wrap-compartir", "btn-compartir");
 
     // Fotos — embed grid + botón carpeta
     if (linkFotos) {
