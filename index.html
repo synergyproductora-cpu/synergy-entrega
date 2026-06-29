@@ -133,34 +133,27 @@
     }
     .btn-secundario:hover { background: rgba(255,255,255,0.1); }
 
-    /* FOTOS GRID */
-    .fotos-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
+    /* FOTOS */
+    .fotos-embed {
+      width: 100%;
+      height: 420px;
       border-radius: 10px;
       overflow: hidden;
-    }
-    .foto-item {
-      aspect-ratio: 4/3;
       background: #111c28;
-      overflow: hidden;
-      border-radius: 4px;
+      border: none;
     }
-    .foto-item img {
+    .foto-placeholder-box {
       width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    .foto-placeholder {
-      width: 100%;
-      height: 100%;
+      height: 200px;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: rgba(255,255,255,0.15);
-      font-size: 22px;
+      background: #111c28;
+      border-radius: 10px;
+      color: rgba(255,255,255,0.25);
+      font-size: 13px;
+      gap: 10px;
     }
 
     /* INFO CHIPS */
@@ -263,14 +256,15 @@
     <!-- FOTOGRAFÍAS -->
     <div class="seccion">
       <div class="seccion-label">3 · Fotografías</div>
-      <div class="fotos-grid" id="fotos-grid">
-        <div class="foto-placeholder">🏠</div>
-        <div class="foto-placeholder">🏠</div>
-        <div class="foto-placeholder">🏠</div>
+      <div id="fotos-container">
+        <div class="foto-placeholder-box">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Sin fotografías
+        </div>
       </div>
-      <a class="btn-descarga btn-secundario" href="#" id="btn-fotos" target="_blank">
+      <a class="btn-descarga btn-secundario" href="#" id="btn-fotos" target="_blank" style="display:none;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        Ver y descargar todas las fotografías
+        Abrir carpeta completa en Drive
       </a>
     </div>
 
@@ -279,7 +273,7 @@
   <!-- FOOTER -->
   <div class="footer">
     <p>Fue un placer trabajar en este proyecto contigo.<br>Espero que este contenido atraiga al comprador ideal y cierres la venta pronto.</p>
-    <a href="mailto:synergy.productora@gmail.com">¿Tienes otro inmueble por vender? Hablemos →</a>
+    <a href="https://wa.me/message/6VYZIP53JBA6N1" target="_blank">¿Tienes otro inmueble por vender? Hablemos →</a>
     <p style="margin-top:16px;">Disponible por 30 días</p>
   </div>
 
@@ -323,9 +317,24 @@
       document.getElementById("btn-compartir").href = "https://drive.google.com/file/d/" + idV2 + "/view";
     }
 
-    // Fotos — link a carpeta de Drive
+    // Fotos — embed de carpeta Drive
     if (linkFotos) {
-      document.getElementById("btn-fotos").href = linkFotos;
+      // Extrae el ID de la carpeta del link
+      const matchFolder = linkFotos.match(/\/folders\/([a-zA-Z0-9_-]{10,})/);
+      const folderId = matchFolder ? matchFolder[1] : "";
+
+      const btnFotos = document.getElementById("btn-fotos");
+      btnFotos.href = linkFotos;
+      btnFotos.style.display = "flex";
+
+      const container = document.getElementById("fotos-container");
+      if (folderId) {
+        container.innerHTML =
+          '<iframe class="fotos-embed" src="https://drive.google.com/embeddedfolderview?id=' + folderId + '#grid" title="Fotografías"></iframe>';
+      } else {
+        // Si el link no tiene el formato esperado, muestra botón directo
+        container.innerHTML = "";
+      }
     }
   </script>
 
