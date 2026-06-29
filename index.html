@@ -68,41 +68,70 @@
       margin-bottom: 10px;
     }
 
-    /* VIDEO PLAYER */
-    .video-wrap {
-      background: #000;
-      border-radius: 10px;
-      overflow: hidden;
-      width: 100%;
+    /* VIDEO CARD */
+    .video-card {
       position: relative;
-    }
-    .video-wrap.horizontal { aspect-ratio: 16/9; }
-    .video-wrap.vertical {
       max-width: 340px;
       margin: 0 auto;
       aspect-ratio: 9/16;
-    }
-    .video-wrap iframe,
-    .video-wrap video {
-      width: 100%;
-      height: 100%;
-      border: none;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #111c28;
+      cursor: pointer;
       display: block;
+      text-decoration: none;
     }
-    .video-placeholder {
+    .video-card img {
       width: 100%;
       height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+    .video-card:hover img { transform: scale(1.03); }
+    .video-card .play-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.35);
+      gap: 10px;
+      transition: background 0.2s;
+    }
+    .video-card:hover .play-overlay { background: rgba(0,0,0,0.5); }
+    .play-btn {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    .play-btn svg { color: #1F3A5F; margin-left: 4px; }
+    .video-label {
+      color: rgba(255,255,255,0.9);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    }
+    .video-placeholder-empty {
+      max-width: 340px;
+      margin: 0 auto;
+      aspect-ratio: 9/16;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       background: #111c28;
-      color: rgba(255,255,255,0.3);
+      border-radius: 12px;
+      color: rgba(255,255,255,0.2);
       font-size: 13px;
       gap: 10px;
-    }
-    .video-placeholder svg {
-      opacity: 0.3;
     }
 
     /* BOTÓN DESCARGA */
@@ -224,30 +253,28 @@
     <!-- VIDEO PRINCIPAL -->
     <div class="seccion">
       <div class="seccion-label">1 · Video principal</div>
-      <div class="video-wrap vertical" id="wrap-principal">
-        <div class="video-placeholder" id="placeholder-principal">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
-          Video principal
+      <div id="wrap-principal">
+        <div class="video-placeholder-empty">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
+          Sin video
         </div>
-        <iframe id="iframe-principal" src="" allowfullscreen allow="autoplay" style="display:none;width:100%;height:100%;border:none;position:absolute;top:0;left:0;"></iframe>
       </div>
-      <a class="btn-descarga" href="#" id="btn-principal" target="_blank">
+      <a class="btn-descarga" href="#" id="btn-principal" target="_blank" style="display:none;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Descargar video principal
       </a>
     </div>
 
-    <!-- VIDEO PARA COMPARTIR (vertical / reel) -->
+    <!-- VIDEO PARA COMPARTIR -->
     <div class="seccion">
       <div class="seccion-label">2 · Video para compartir</div>
-      <div class="video-wrap vertical" id="wrap-compartir">
-        <div class="video-placeholder" id="placeholder-compartir">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
-          Video para compartir
+      <div id="wrap-compartir">
+        <div class="video-placeholder-empty">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
+          Sin video
         </div>
-        <iframe id="iframe-compartir" src="" allowfullscreen allow="autoplay" style="display:none;width:100%;height:100%;border:none;position:absolute;top:0;left:0;"></iframe>
       </div>
-      <a class="btn-descarga btn-secundario" href="#" id="btn-compartir" target="_blank">
+      <a class="btn-descarga btn-secundario" href="#" id="btn-compartir" target="_blank" style="display:none;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Descargar video para compartir
       </a>
@@ -295,27 +322,29 @@
     document.getElementById("fecha-shoot").textContent     = grabacion;
     document.getElementById("fecha-limite").textContent    = entregado;
 
-    // Video principal (horizontal 16:9)
-    if (idV1) {
-      document.getElementById("placeholder-principal").style.display = "none";
-      const wrap1 = document.getElementById("wrap-principal");
-      wrap1.style.position = "relative";
-      const ifr = document.getElementById("iframe-principal");
-      ifr.src = "https://drive.google.com/file/d/" + idV1 + "/preview";
-      ifr.style.display = "block";
-      document.getElementById("btn-principal").href = "https://drive.google.com/file/d/" + idV1 + "/view";
+    function crearVideoCard(id, label, wrapId, btnId) {
+      if (!id) return;
+      const viewUrl  = "https://drive.google.com/file/d/" + id + "/view";
+      const thumbUrl = "https://drive.google.com/thumbnail?id=" + id + "&sz=w800";
+
+      document.getElementById(wrapId).innerHTML =
+        '<a class="video-card" href="' + viewUrl + '" target="_blank">' +
+          '<img src="' + thumbUrl + '" alt="' + label + '" onerror="this.style.display=\'none\'">' +
+          '<div class="play-overlay">' +
+            '<div class="play-btn">' +
+              '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>' +
+            '</div>' +
+            '<span class="video-label">▶ Ver video</span>' +
+          '</div>' +
+        '</a>';
+
+      const btn = document.getElementById(btnId);
+      btn.href = viewUrl;
+      btn.style.display = "flex";
     }
 
-    // Video para compartir (vertical 9:16)
-    if (idV2) {
-      document.getElementById("placeholder-compartir").style.display = "none";
-      const wrap2 = document.getElementById("wrap-compartir");
-      wrap2.style.position = "relative";
-      const ifr2 = document.getElementById("iframe-compartir");
-      ifr2.src = "https://drive.google.com/file/d/" + idV2 + "/preview";
-      ifr2.style.display = "block";
-      document.getElementById("btn-compartir").href = "https://drive.google.com/file/d/" + idV2 + "/view";
-    }
+    crearVideoCard(idV1, "Video principal",   "wrap-principal", "btn-principal");
+    crearVideoCard(idV2, "Video para compartir", "wrap-compartir", "btn-compartir");
 
     // Fotos — embed de carpeta Drive
     if (linkFotos) {
