@@ -1,679 +1,324 @@
-// ════════════════════════════════════════════════════════════════
-//  SYNERGY PRODUCTORA — SCRIPTS COMPLETOS (versión final)
-//  Pega TODO este contenido en Código.gs de Apps Script
-// ════════════════════════════════════════════════════════════════
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Synergy Productora — Entrega</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-// ────────────────────────────────────────────────────────────────
-//  MENÚ PERSONALIZADO EN EL SHEET
-//  Se crea automáticamente al abrir el spreadsheet
-// ────────────────────────────────────────────────────────────────
-function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu("🎬 Synergy")
-    .addItem("📅 Crear evento en calendario (fila seleccionada)", "crearEventoFilaActual")
-    .addItem("⏱ Actualizar fórmulas de entrega (todos los meses)", "actualizarFormulasEntrega")
-    .addItem("🔗 Generar enlaces de entrega", "generarEnlacesEntrega")
-    .addSeparator()
-    .addItem("🔄 Sincronizar clientes en formulario", "sincronizarClientesEnForm")
-    .addItem("📊 Enviar reporte semanal ahora", "reporteSemanal")
-    .addItem("📅 Enviar resumen mensual ahora", "resumenMensual")
-    .addToUi();
-}
-
-// ────────────────────────────────────────────────────────────────
-//  ACTUALIZAR FÓRMULAS DE ENTREGA EN TODOS LOS MESES
-// ────────────────────────────────────────────────────────────────
-function actualizarFormulasEntrega() {
-  const ss  = SpreadsheetApp.getActiveSpreadsheet();
-  const ui  = SpreadsheetApp.getUi();
-  let actualizadas = 0;
-
-  MESES_SYNERGY.forEach(mes => {
-    const hoja = ss.getSheetByName(mes);
-    if (!hoja) return;
-
-    for (let fila = 3; fila <= 42; fila++) {
-      const fecha = hoja.getRange(fila, 1).getValue();
-      if (!fecha) continue;
-
-      const diasEs = `CHOOSE(WEEKDAY(A${fila}+${META_DIAS_ENTREGA},2),"lunes","martes","miércoles","jueves","viernes","sábado","domingo")&" "&TEXT(A${fila}+${META_DIAS_ENTREGA},"DD/MM")`;
-
-      hoja.getRange(fila, 6).setFormula(
-        `=IF(A${fila}="","",` +
-        `IF(E${fila}="Completado",` +
-          `IF(TODAY()<=(A${fila}+${META_DIAS_ENTREGA}),"✅ Entregado a tiempo","⚠️ Entregado "&INT(TODAY()-(A${fila}+${META_DIAS_ENTREGA}))&"d tarde"),` +
-        `IF((A${fila}+${META_DIAS_ENTREGA})-TODAY()>0,` +
-          `"⏳ "&${diasEs}&" · "&INT((A${fila}+${META_DIAS_ENTREGA})-TODAY())&"d restantes",` +
-        `IF((A${fila}+${META_DIAS_ENTREGA})-TODAY()=0,` +
-          `"🔴 "&${diasEs}&" · Vence HOY",` +
-          `"⚠️ "&${diasEs}&" · "&INT(ABS((A${fila}+${META_DIAS_ENTREGA})-TODAY()))&"d tarde"))))`
-      );
-      actualizadas++;
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1923;
+      color: #fff;
+      min-height: 100vh;
     }
-  });
 
-  ui.alert(`✅ Listo — ${actualizadas} filas actualizadas en los 12 meses.`);
-}
-
-// ────────────────────────────────────────────────────────────────
-//  CREAR EVENTO DESDE FILA SELECCIONADA EN EL SHEET
-// ────────────────────────────────────────────────────────────────
-function crearEventoFilaActual() {
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  const hoja  = ss.getActiveSheet();
-  const fila  = ss.getActiveRange().getRow();
-  const ui    = SpreadsheetApp.getUi();
-
-  if (!MESES_SYNERGY.includes(hoja.getName())) {
-    ui.alert("⚠️ Selecciona una fila en una hoja de mes (Enero, Febrero, etc.)");
-    return;
-  }
-
-  if (fila < 3 || fila > 42) {
-    ui.alert("⚠️ Selecciona una fila entre la 3 y la 42.");
-    return;
-  }
-
-  const datos    = hoja.getRange(fila, 1, 1, 5).getValues()[0];
-  const fecha    = datos[0];
-  const proyecto = datos[1];
-  const cliente  = datos[2];
-  const precio   = datos[3];
-
-  if (!fecha || !proyecto) {
-    ui.alert("⚠️ La fila seleccionada no tiene fecha ni proyecto.");
-    return;
-  }
-
-  const fechaObj     = new Date(fecha);
-  const eventoInicio = new Date(fechaObj);
-  eventoInicio.setDate(fechaObj.getDate() + META_DIAS_ENTREGA);
-  eventoInicio.setHours(8, 0, 0, 0);
-  const eventoFin = new Date(eventoInicio);
-  eventoFin.setHours(9, 0, 0, 0);
-
-  try {
-    const calendar = CalendarApp.getDefaultCalendar();
-    calendar.createEvent(
-      `📦 Entregar · ${proyecto}`,
-      eventoInicio,
-      eventoFin,
-      {
-        description: `Cliente: ${cliente}\nProyecto: ${proyecto}\nPrecio: $${precio}\nHoja: ${hoja.getName()}, fila ${fila}`,
-        location: "Synergy Productora"
-      }
-    );
-    ui.alert(`✅ Evento creado\n\n📦 Entregar · ${proyecto}\n📅 ${fmtFecha(eventoInicio)} · 8:00 AM`);
-  } catch(err) {
-    ui.alert("❌ Error al crear el evento: " + err.message);
-  }
-}
-
-const EMAIL_SYNERGY     = "synergy.productora@gmail.com";
-const FORM_ID_SYNERGY   = "1lN_X1lNbW6k5dUPRSaicAJfWsrEaVN52reLblaymTGE";
-const META_DIAS_ENTREGA = 3;
-const HORA_ENTREGA      = "8:00 AM";
-const URL_ENTREGA       = "https://synergyproductora-cpu.github.io/synergy-entrega/";
-
-const MESES_SYNERGY = [
-  "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
-];
-
-const DIAS_ES = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
-
-// Formatea fecha con nombre del día en español
-function fmtFecha(d) {
-  const fecha  = new Date(d);
-  const dia    = DIAS_ES[fecha.getDay()];
-  const numero = Utilities.formatDate(fecha, Session.getScriptTimeZone(), "dd/MM/yyyy");
-  return dia + " " + numero;
-}
-
-// ────────────────────────────────────────────────────────────────
-//  1. ALERTA DIARIA POR EMAIL
-//     Trigger: Temporizador por tiempo → Día → hora que prefieras
-// ────────────────────────────────────────────────────────────────
-function alertaDiariaProyectos() {
-  const ss  = SpreadsheetApp.getActiveSpreadsheet();
-  const hoy = new Date();
-  hoy.setHours(0,0,0,0);
-
-  let vencidos = [], urgentes = [], enProceso = [];
-
-  MESES_SYNERGY.forEach(mes => {
-    const hoja = ss.getSheetByName(mes);
-    if (!hoja) return;
-    const datos = hoja.getRange("A3:F42").getValues();
-
-    datos.forEach(fila => {
-      const fecha    = fila[0];
-      const proyecto = fila[1];
-      const cliente  = fila[2];
-      const progreso = fila[4];
-
-      if (!fecha || !proyecto) return;
-      if (progreso === "Completado" || progreso === "") return;
-
-      const fechaShoot = new Date(fecha);
-      fechaShoot.setHours(0,0,0,0);
-      const deadline = new Date(fechaShoot);
-      deadline.setDate(deadline.getDate() + META_DIAS_ENTREGA);
-
-      const diffDias = Math.ceil((deadline - hoy) / (1000*60*60*24));
-      const item = { mes, proyecto, cliente, progreso, deadline, diffDias };
-
-      if (diffDias < 0)       vencidos.push(item);
-      else if (diffDias <= 1) urgentes.push(item);
-      else                    enProceso.push(item);
-    });
-  });
-
-  if (!vencidos.length && !urgentes.length && !enProceso.length) return;
-
-  const seccion = (titulo, color, emoji, items) => {
-    if (!items.length) return "";
-    let s = `<div style="margin-bottom:16px;">
-      <h3 style="color:${color};font-size:13px;margin:0 0 8px;">${emoji} ${titulo} (${items.length})</h3>`;
-    items.forEach(i => {
-      const dias = i.diffDias < 0
-        ? `<span style="color:#E24B4A;font-weight:bold;">${Math.abs(i.diffDias)}d tarde</span>`
-        : i.diffDias === 0
-        ? `<span style="color:#FF8C00;font-weight:bold;">Vence HOY</span>`
-        : `<span style="color:#FF8C00;font-weight:bold;">Vence mañana</span>`;
-      s += `<div style="background:white;border-left:4px solid ${color};padding:10px 14px;margin-bottom:6px;border-radius:0 6px 6px 0;">
-        <div style="font-weight:bold;font-size:13px;">${i.proyecto}</div>
-        <div style="color:#666;font-size:11px;margin-top:2px;">👤 ${i.cliente} &nbsp;|&nbsp; 📅 Límite: ${fmtFecha(i.deadline)} &nbsp;|&nbsp; ${dias}</div>
-        <div style="font-size:11px;color:#999;margin-top:2px;">📁 ${i.mes} · ${i.progreso}</div>
-      </div>`;
-    });
-    return s + "</div>";
-  };
-
-  const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-    <div style="background:#1F3A5F;padding:16px 20px;border-radius:8px 8px 0 0;">
-      <h2 style="color:white;margin:0;font-size:16px;">🎬 Synergy Productora — Resumen Diario</h2>
-      <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:12px;">${fmtFecha(hoy)}</p>
-    </div>
-    <div style="background:#f5f5f3;padding:16px 20px;">
-      ${seccion("VENCIDOS",   "#E24B4A", "🔴", vencidos)}
-      ${seccion("URGENTES",   "#FF8C00", "🟠", urgentes)}
-      ${seccion("En proceso", "#185FA5", "🔵", enProceso)}
-    </div>
-    <div style="background:#1F3A5F;padding:10px 20px;border-radius:0 0 8px 8px;text-align:center;">
-      <p style="color:rgba(255,255,255,0.5);font-size:10px;margin:0;">Generado automáticamente · Synergy Productora</p>
-    </div>
-  </div>`;
-
-  const total  = vencidos.length + urgentes.length + enProceso.length;
-  const asunto = vencidos.length > 0
-    ? `🔴 Synergy: ${vencidos.length} proyecto(s) VENCIDO(S) — ${fmtFecha(hoy)}`
-    : urgentes.length > 0
-    ? `🟠 Synergy: ${urgentes.length} proyecto(s) urgente(s) hoy`
-    : `📋 Synergy: ${total} proyecto(s) en proceso — ${fmtFecha(hoy)}`;
-
-  MailApp.sendEmail({ to: EMAIL_SYNERGY, subject: asunto, htmlBody: html });
-}
-
-// ────────────────────────────────────────────────────────────────
-//  2. REGISTRO AUTOMÁTICO DESDE GOOGLE FORM
-//     Trigger: Desde hoja de cálculo → Al enviar formulario
-// ────────────────────────────────────────────────────────────────
-function onFormSubmit(e) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const r  = e.namedValues;
-
-  const fechaStr = r["Fecha del shoot"]?.[0]         || "";
-  const proyecto = r["Proyecto / Descripción"]?.[0]  || "";
-  const cliente  = r["Cliente"]?.[0]                 || "";
-  const precio   = parseFloat(r["Precio ($)"]?.[0])  || 0;
-  const editor   = parseFloat(r["Costo editor ($)"]?.[0]) || 20;
-
-  if (!fechaStr || !proyecto) return;
-
-  const partes    = fechaStr.split("/");
-  const dia       = parseInt(partes[0]);
-  const mes       = parseInt(partes[1]);
-  const anio      = parseInt(partes[2]);
-
-  const mesNombre = MESES_SYNERGY[mes - 1];
-  const hoja      = ss.getSheetByName(mesNombre);
-  if (!hoja) return;
-
-  const colA = hoja.getRange("A3:A42").getValues();
-  let fila = -1;
-  for (let i = 0; i < colA.length; i++) {
-    if (!colA[i][0]) { fila = i + 3; break; }
-  }
-
-  if (fila === -1) {
-    MailApp.sendEmail({ to: EMAIL_SYNERGY,
-      subject: `⚠️ Synergy: hoja ${mesNombre} está llena`,
-      body: `Registra manualmente:\nProyecto: ${proyecto}\nCliente: ${cliente}` });
-    return;
-  }
-
-  const fechaDeadline = new Date(anio, mes-1, dia + META_DIAS_ENTREGA);
-
-  hoja.getRange(fila,1).setFormula(`=DATE(${anio},${mes},${dia})`);
-  hoja.getRange(fila,1).setNumberFormat("DDDD DD/MM/YY");
-  hoja.getRange(fila,2).setValue(proyecto);
-  hoja.getRange(fila,3).setValue(cliente);
-  hoja.getRange(fila,4).setValue(precio);
-  hoja.getRange(fila,5).setValue("Por procesar");
-
-  // ⏱ Entrega: muestra día completo + fecha + estado
-  const diasEs = `CHOOSE(WEEKDAY(A${fila}+${META_DIAS_ENTREGA},2),"lunes","martes","miércoles","jueves","viernes","sábado","domingo")&" "&TEXT(A${fila}+${META_DIAS_ENTREGA},"DD/MM")`;
-  hoja.getRange(fila,6).setFormula(
-    `=IF(A${fila}="","",` +
-    `IF(E${fila}="Completado",` +
-      `IF(TODAY()<=(A${fila}+${META_DIAS_ENTREGA}),"✅ Entregado a tiempo","⚠️ Entregado "&INT(TODAY()-(A${fila}+${META_DIAS_ENTREGA}))&"d tarde"),` +
-    `IF((A${fila}+${META_DIAS_ENTREGA})-TODAY()>0,` +
-      `"⏳ "&${diasEs}&" · "&INT((A${fila}+${META_DIAS_ENTREGA})-TODAY())&"d restantes",` +
-    `IF((A${fila}+${META_DIAS_ENTREGA})-TODAY()=0,` +
-      `"🔴 "&${diasEs}&" · Vence HOY",` +
-      `"⚠️ "&${diasEs}&" · "&INT(ABS((A${fila}+${META_DIAS_ENTREGA})-TODAY()))&"d tarde"))))`
-  );
-
-  hoja.getRange(fila,7).setValue("Por pagar");
-  hoja.getRange(fila,8).setValue(0);
-  hoja.getRange(fila,9).setValue(editor);
-  hoja.getRange(fila,10).setFormula(`=IF(H${fila}=0,"-",H${fila}-I${fila})`);
-  hoja.getRange(fila,11).setFormula(`=IF(G${fila}="Pagado","-",IF(A${fila}="","-",IFERROR(TODAY()-A${fila},"-")))`);
-  hoja.getRange(fila,12).setFormula(
-    `=IF(D${fila}="","-",IF(H${fila}>=D${fila},"Cobrado",` +
-    `IF(AND(H${fila}>0,H${fila}<D${fila}),"Abono - Falta $"&TEXT(D${fila}-H${fila},"#,##0"),` +
-    `IF(A${fila}="","-",IFERROR(IF(TODAY()-A${fila}>30,"Vencido +30d",` +
-    `IF(TODAY()-A${fila}>15,"Vencido +15d","Por cobrar")),"-")))))`
-  );
-
-  // Crear evento en Google Calendar (sincroniza automático con Apple Calendar)
-  try {
-    const calendar    = CalendarApp.getDefaultCalendar();
-    const eventoInicio = new Date(anio, mes-1, dia + META_DIAS_ENTREGA, 8, 0, 0);
-    const eventoFin    = new Date(anio, mes-1, dia + META_DIAS_ENTREGA, 9, 0, 0);
-    calendar.createEvent(
-      `📦 Entregar · ${proyecto}`,
-      eventoInicio,
-      eventoFin,
-      {
-        description: `Cliente: ${cliente}\nProyecto: ${proyecto}\nPrecio: $${precio}\nRegistrado en: ${mesNombre}, fila ${fila}`,
-        location: "Synergy Productora"
-      }
-    );
-  } catch(err) {
-    Logger.log("⚠️ No se pudo crear evento en calendario: " + err.message);
-  }
-
-  MailApp.sendEmail({ to: EMAIL_SYNERGY,
-    subject: `✅ Nuevo proyecto — ${proyecto}`,
-    htmlBody: `<div style="font-family:Arial,sans-serif;max-width:500px;">
-      <div style="background:#1F3A5F;padding:14px 18px;border-radius:8px 8px 0 0;">
-        <h2 style="color:white;margin:0;font-size:15px;">🎬 Proyecto registrado</h2>
-      </div>
-      <div style="background:#f5f5f3;padding:16px 18px;border-radius:0 0 8px 8px;">
-        <p><b>Proyecto:</b> ${proyecto}</p>
-        <p><b>Cliente:</b> ${cliente}</p>
-        <p><b>Fecha shoot:</b> ${fmtFecha(new Date(anio, mes-1, dia))}</p>
-        <p><b>Precio:</b> $${precio}</p>
-        <p><b>Límite de entrega:</b> ${fmtFecha(fechaDeadline)} · ${HORA_ENTREGA}</p>
-        <p><b>Registrado en:</b> ${mesNombre}, fila ${fila}</p>
-      </div>
-    </div>`
-  });
-}
-
-// ────────────────────────────────────────────────────────────────
-//  3. SYNC CLIENTES → DROPDOWN DEL FORM
-//     Trigger: Desde hoja de cálculo → Al editar
-// ────────────────────────────────────────────────────────────────
-function sincronizarClientesEnForm() {
-  const ss      = SpreadsheetApp.getActiveSpreadsheet();
-  const hoja    = ss.getSheetByName("Clientes");
-  const form    = FormApp.openById(FORM_ID_SYNERGY);
-  const valores = hoja.getRange("A3:A52").getValues();
-
-  const clientes = valores.flat()
-    .filter(v => v && v.toString().trim() !== "")
-    .sort();
-
-  if (!clientes.length) return;
-
-  form.getItems().forEach(item => {
-    if (item.getTitle() === "Cliente") {
-      if (item.getType() === FormApp.ItemType.LIST)
-        item.asListItem().setChoiceValues(clientes);
-      else if (item.getType() === FormApp.ItemType.MULTIPLE_CHOICE)
-        item.asMultipleChoiceItem().setChoiceValues(clientes);
+    /* HEADER */
+    .header {
+      background: #1F3A5F;
+      padding: 20px 24px 18px;
+      text-align: center;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
-  });
+    .header .brand {
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.45);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .header .cliente {
+      font-size: 14px;
+      color: rgba(255,255,255,0.55);
+    }
+    .header .badge {
+      display: inline-block;
+      margin-top: 10px;
+      background: rgba(39,174,96,0.2);
+      color: #6edfa0;
+      font-size: 12px;
+      padding: 4px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(39,174,96,0.3);
+    }
 
-  Logger.log(`✅ Form actualizado con ${clientes.length} clientes`);
-}
+    /* MAIN */
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
 
-function onEditClientes(e) {
-  if (e.source.getActiveSheet().getName() === "Clientes" && e.range.getColumn() === 1) {
-    sincronizarClientesEnForm();
-  }
-}
+    /* SECCIÓN */
+    .seccion {
+      margin-bottom: 28px;
+    }
+    .seccion-label {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      color: rgba(255,255,255,0.35);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
 
-// ────────────────────────────────────────────────────────────────
-//  GENERAR ENLACES DE ENTREGA
-//  Columnas del sheet: M=ID Video Principal, N=ID Video Compartir, O=Link Fotos
-//  Trigger: Manual desde menú 🎬 Synergy → Generar enlaces de entrega
-// ────────────────────────────────────────────────────────────────
-function generarEnlacesEntrega() {
-  const ss  = SpreadsheetApp.getActiveSpreadsheet();
-  const ui  = SpreadsheetApp.getUi();
-  let proyectos = [];
+    /* VIDEO PLAYER */
+    .video-wrap {
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      width: 100%;
+      aspect-ratio: 16/9;
+      position: relative;
+    }
+    .video-wrap iframe,
+    .video-wrap video {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+    .video-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #111c28;
+      color: rgba(255,255,255,0.3);
+      font-size: 13px;
+      gap: 10px;
+    }
+    .video-placeholder svg {
+      opacity: 0.3;
+    }
 
-  MESES_SYNERGY.forEach(mes => {
-    const hoja = ss.getSheetByName(mes);
-    if (!hoja) return;
-    const datos = hoja.getRange("A3:O42").getValues();
+    /* BOTÓN DESCARGA */
+    .btn-descarga {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      margin-top: 10px;
+      padding: 13px;
+      background: #1F3A5F;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .btn-descarga:hover { background: #274e80; }
+    .btn-descarga svg { flex-shrink: 0; }
 
-    datos.forEach(fila => {
-      const fecha     = fila[0];
-      const proyecto  = fila[1];
-      const cliente   = fila[2];
-      const progreso  = fila[4];
-      const idV1      = fila[12] || ""; // Col M
-      const idV2      = fila[13] || ""; // Col N
-      const linkFotos = fila[14] || ""; // Col O
+    .btn-secundario {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .btn-secundario:hover { background: rgba(255,255,255,0.1); }
 
-      if (!proyecto || !fecha) return;
-      if (progreso !== "Completado") return;
-      if (!idV1 && !idV2 && !linkFotos) return;
+    /* FOTOS GRID */
+    .fotos-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .foto-item {
+      aspect-ratio: 4/3;
+      background: #111c28;
+      overflow: hidden;
+      border-radius: 4px;
+    }
+    .foto-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .foto-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.15);
+      font-size: 22px;
+    }
 
-      const fechaObj  = new Date(fecha);
-      const grabacion = fmtFecha(fechaObj);
-      const entregado = fmtFecha(new Date());
+    /* INFO CHIPS */
+    .info-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .chip {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.55);
+    }
+    .chip span {
+      display: block;
+      font-size: 13px;
+      color: #fff;
+      font-weight: 500;
+      margin-top: 2px;
+    }
 
-      const params = new URLSearchParams_({
-        p: proyecto,
-        c: cliente,
-        g: grabacion,
-        e: entregado,
-        v1: idV1,
-        v2: idV2,
-        f: linkFotos
-      });
+    /* FOOTER */
+    .footer {
+      text-align: center;
+      padding: 24px 16px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .footer p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.25);
+      margin-bottom: 6px;
+    }
+    .footer a {
+      font-size: 13px;
+      color: #6aa3d4;
+      text-decoration: none;
+    }
+    .footer a:hover { text-decoration: underline; }
 
-      const enlace = URL_ENTREGA + "?" + params;
-      proyectos.push({ proyecto, cliente, mes, enlace });
-    });
-  });
+    /* RESPONSIVE */
+    @media (max-width: 480px) {
+      .header h1 { font-size: 18px; }
+      .fotos-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
 
-  if (!proyectos.length) {
-    ui.alert("No hay proyectos completados con links de Drive.\n\nAsegúrate de:\n1. Marcar el proyecto como Completado\n2. Pegar el ID del video en la columna M\n3. Pegar el ID del video compartir en columna N\n4. Pegar el link de la carpeta de fotos en columna O");
-    return;
-  }
+  <!-- HEADER -->
+  <div class="header">
+    <div class="brand">Abraham Oca · Productor Audiovisual Inmobiliario</div>
+    <h1 id="titulo-proyecto">Cargando...</h1>
+    <div class="cliente" id="nombre-cliente"></div>
+  </div>
 
-  const filaEnlace = p =>
-    `<div style="background:white;border-left:4px solid #1F3A5F;padding:12px 16px;margin-bottom:10px;border-radius:0 8px 8px 0;">
-      <div style="font-weight:bold;font-size:13px;">${p.proyecto}</div>
-      <div style="color:#666;font-size:11px;margin:3px 0;">👤 ${p.cliente} · 📁 ${p.mes}</div>
-      <a href="${p.enlace}" style="font-size:12px;color:#1F3A5F;word-break:break-all;">${p.enlace}</a>
-    </div>`;
+  <div class="container">
 
-  const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-    <div style="background:#1F3A5F;padding:16px 20px;border-radius:8px 8px 0 0;">
-      <h2 style="color:white;margin:0;font-size:16px;">🔗 Enlaces de entrega listos</h2>
-      <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:12px;">${proyectos.length} proyecto(s) · ${fmtFecha(new Date())}</p>
+    <!-- INFO -->
+    <div class="info-row">
+      <div class="chip">Fecha de grabación <span id="fecha-shoot">—</span></div>
+      <div class="chip">Entregado <span id="fecha-limite">—</span></div>
     </div>
-    <div style="background:#f5f5f3;padding:16px 20px;">
-      <p style="font-size:12px;color:#666;margin-bottom:14px;">Copia cada enlace y mándalo por WhatsApp al cliente correspondiente:</p>
-      ${proyectos.map(filaEnlace).join("")}
-    </div>
-    <div style="background:#1F3A5F;padding:10px 20px;border-radius:0 0 8px 8px;text-align:center;">
-      <p style="color:rgba(255,255,255,0.5);font-size:10px;margin:0;">Synergy Productora · Sistema automático de entregas</p>
-    </div>
-  </div>`;
 
-  MailApp.sendEmail({
-    to: EMAIL_SYNERGY,
-    subject: `🔗 ${proyectos.length} enlace(s) de entrega listos — ${fmtFecha(new Date())}`,
-    htmlBody: html
-  });
-
-  ui.alert(`✅ Listo — te enviamos ${proyectos.length} enlace(s) por email.`);
-}
-
-// Helper: construye query string manualmente (Apps Script no tiene URLSearchParams)
-function URLSearchParams_(obj) {
-  return Object.entries(obj)
-    .filter(([k, v]) => v)
-    .map(([k, v]) => encodeURIComponent(k) + "=" + encodeURIComponent(v))
-    .join("&");
-}
-
-// ────────────────────────────────────────────────────────────────
-//  4. REPORTE SEMANAL — LUNES
-//     Trigger: Temporizador por tiempo → Semana → Lunes → 8:00 AM
-// ────────────────────────────────────────────────────────────────
-function reporteSemanal() {
-  const ss  = SpreadsheetApp.getActiveSpreadsheet();
-  const hoy = new Date();
-  hoy.setHours(0,0,0,0);
-
-  // Rango: lunes pasado → domingo pasado
-  const lunesPasado  = new Date(hoy); lunesPasado.setDate(hoy.getDate() - 7);
-  const domingoPasado = new Date(hoy); domingoPasado.setDate(hoy.getDate() - 1);
-
-  let entregados = [], enProceso = [], totalFacturado = 0, totalCobrado = 0, pendienteCobro = 0;
-
-  MESES_SYNERGY.forEach(mes => {
-    const hoja = ss.getSheetByName(mes);
-    if (!hoja) return;
-    const datos = hoja.getRange("A3:J42").getValues();
-
-    datos.forEach(fila => {
-      const fecha    = fila[0];
-      const proyecto = fila[1];
-      const cliente  = fila[2];
-      const precio   = parseFloat(fila[3]) || 0;
-      const progreso = fila[4];
-      const factura  = fila[6] || "";
-      const cobrado  = parseFloat(fila[7]) || 0;
-
-      if (!fecha || !proyecto) return;
-
-      const fechaD = new Date(fecha); fechaD.setHours(0,0,0,0);
-      const enSemana = fechaD >= lunesPasado && fechaD <= domingoPasado;
-
-      if (enSemana) {
-        totalFacturado += precio;
-        totalCobrado   += cobrado;
-        if (factura !== "Pagado") pendienteCobro += (precio - cobrado);
-        if (progreso === "Completado") entregados.push({ proyecto, cliente, precio });
-        else enProceso.push({ proyecto, cliente, precio, progreso });
-      }
-    });
-  });
-
-  const filaItem = (i, color) =>
-    `<div style="background:white;border-left:4px solid ${color};padding:8px 12px;margin-bottom:5px;border-radius:0 5px 5px 0;">
-      <b>${i.proyecto}</b> <span style="color:#666;font-size:11px;">· ${i.cliente}</span>
-      <span style="float:right;color:#1F3A5F;font-weight:bold;">$${i.precio}</span>
-    </div>`;
-
-  const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-    <div style="background:#1F3A5F;padding:16px 20px;border-radius:8px 8px 0 0;">
-      <h2 style="color:white;margin:0;font-size:16px;">📊 Reporte Semanal · Synergy Productora</h2>
-      <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:12px;">
-        ${fmtFecha(lunesPasado)} → ${fmtFecha(domingoPasado)}
-      </p>
-    </div>
-    <div style="background:#f5f5f3;padding:16px 20px;">
-
-      <!-- KPIs -->
-      <div style="display:flex;gap:10px;margin-bottom:16px;">
-        <div style="flex:1;background:white;padding:12px;border-radius:8px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-          <div style="font-size:22px;font-weight:bold;color:#1F3A5F;">${entregados.length + enProceso.length}</div>
-          <div style="font-size:11px;color:#888;">Proyectos</div>
+    <!-- VIDEO PRINCIPAL -->
+    <div class="seccion">
+      <div class="seccion-label">1 · Video principal</div>
+      <div class="video-wrap">
+        <div class="video-placeholder" id="placeholder-principal">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
+          Video principal
         </div>
-        <div style="flex:1;background:white;padding:12px;border-radius:8px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-          <div style="font-size:22px;font-weight:bold;color:#27AE60;">$${totalFacturado}</div>
-          <div style="font-size:11px;color:#888;">Facturado</div>
-        </div>
-        <div style="flex:1;background:white;padding:12px;border-radius:8px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-          <div style="font-size:22px;font-weight:bold;color:#27AE60;">$${totalCobrado}</div>
-          <div style="font-size:11px;color:#888;">Cobrado</div>
-        </div>
-        <div style="flex:1;background:white;padding:12px;border-radius:8px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-          <div style="font-size:22px;font-weight:bold;color:#E24B4A;">$${pendienteCobro}</div>
-          <div style="font-size:11px;color:#888;">Por cobrar</div>
-        </div>
+        <iframe id="iframe-principal" src="" allowfullscreen style="display:none;width:100%;height:100%;border:none;"></iframe>
       </div>
-
-      ${entregados.length ? `
-        <h3 style="color:#27AE60;font-size:13px;margin:0 0 8px;">✅ Entregados (${entregados.length})</h3>
-        ${entregados.map(i => filaItem(i, "#27AE60")).join("")}
-      ` : ""}
-
-      ${enProceso.length ? `
-        <h3 style="color:#185FA5;font-size:13px;margin:12px 0 8px;">🔵 En proceso (${enProceso.length})</h3>
-        ${enProceso.map(i => filaItem(i, "#185FA5")).join("")}
-      ` : ""}
-
-      ${(!entregados.length && !enProceso.length) ? `
-        <p style="text-align:center;color:#888;padding:20px 0;">Sin proyectos registrados esta semana.</p>
-      ` : ""}
-
+      <a class="btn-descarga" href="#" id="btn-principal" target="_blank">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Descargar video principal
+      </a>
     </div>
-    <div style="background:#1F3A5F;padding:10px 20px;border-radius:0 0 8px 8px;text-align:center;">
-      <p style="color:rgba(255,255,255,0.5);font-size:10px;margin:0;">Generado automáticamente · Synergy Productora</p>
-    </div>
-  </div>`;
 
-  MailApp.sendEmail({
-    to: EMAIL_SYNERGY,
-    subject: `📊 Reporte semanal Synergy · ${fmtFecha(lunesPasado)} → ${fmtFecha(domingoPasado)}`,
-    htmlBody: html
-  });
-}
-
-// ────────────────────────────────────────────────────────────────
-//  5. RESUMEN MENSUAL — DÍA 1 DE CADA MES
-//     Trigger: Temporizador por tiempo → Mes → Día 1 → 8:00 AM
-// ────────────────────────────────────────────────────────────────
-function resumenMensual() {
-  const ss  = SpreadsheetApp.getActiveSpreadsheet();
-  const hoy = new Date();
-
-  // Mes anterior
-  const mesAnteriorIdx = hoy.getMonth() === 0 ? 11 : hoy.getMonth() - 1;
-  const mesNombre      = MESES_SYNERGY[mesAnteriorIdx];
-  const hoja           = ss.getSheetByName(mesNombre);
-  if (!hoja) return;
-
-  const datos = hoja.getRange("A3:J42").getValues();
-
-  let totalProyectos = 0, completados = 0, enProceso = 0;
-  let totalFacturado = 0, totalCobrado = 0, pendienteCobro = 0;
-  let clientesUnicos = new Set();
-  let listaProyectos = [];
-
-  datos.forEach(fila => {
-    const proyecto = fila[1];
-    const cliente  = fila[2];
-    const precio   = parseFloat(fila[3]) || 0;
-    const progreso = fila[4];
-    const factura  = fila[6] || "";
-    const cobrado  = parseFloat(fila[7]) || 0;
-
-    if (!proyecto) return;
-
-    totalProyectos++;
-    totalFacturado += precio;
-    totalCobrado   += cobrado;
-    if (factura !== "Pagado") pendienteCobro += (precio - cobrado);
-    if (progreso === "Completado") completados++;
-    else enProceso++;
-    if (cliente) clientesUnicos.add(cliente);
-    listaProyectos.push({ proyecto, cliente, precio, progreso, cobrado });
-  });
-
-  const pctEntrega = totalProyectos > 0
-    ? Math.round((completados / totalProyectos) * 100) : 0;
-
-  const filaP = p => {
-    const color = p.progreso === "Completado" ? "#27AE60" : "#185FA5";
-    const badge = p.progreso === "Completado"
-      ? `<span style="color:#27AE60;">✅ Completado</span>`
-      : `<span style="color:#185FA5;">🔵 ${p.progreso}</span>`;
-    return `<tr>
-      <td style="padding:7px 10px;border-bottom:1px solid #eee;">${p.proyecto}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #eee;color:#666;">${p.cliente}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #eee;font-weight:bold;">$${p.precio}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #eee;color:#27AE60;">$${p.cobrado}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #eee;font-size:11px;">${badge}</td>
-    </tr>`;
-  };
-
-  const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;">
-    <div style="background:#1F3A5F;padding:16px 20px;border-radius:8px 8px 0 0;">
-      <h2 style="color:white;margin:0;font-size:16px;">📅 Cierre Mensual · ${mesNombre} ${hoy.getFullYear()}</h2>
-      <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:12px;">Generado el ${fmtFecha(hoy)}</p>
-    </div>
-    <div style="background:#f5f5f3;padding:16px 20px;">
-
-      <!-- KPIs -->
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:100px;background:white;padding:12px;border-radius:8px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-          <div style="font-size:24px;font-weight:bold;color:#1F3A5F;">${totalProyectos}</div>
-          <div style="font-size:11px;color:#888;">Proyectos</div>
+    <!-- VIDEO PARA COMPARTIR -->
+    <div class="seccion">
+      <div class="seccion-label">2 · Video para compartir</div>
+      <div class="video-wrap">
+        <div class="video-placeholder" id="placeholder-compartir">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
+          Video para compartir
         </div>
-        <div style="flex:1;min-width:100px;background:white;padding:12px;border-radius:8px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-          <div style="font-size:24px;font-weight:bold;color:#27AE60;">${pctEntrega}%</div>
-          <div style="font-size:11px;color:#888;">Entregados</div>
-        </div>
-        <div style="flex:1;min-width:100px;background:white;padding:12px;border-radius:8px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-          <div style="font-size:24px;font-weight:bold;color:#27AE60;">$${totalFacturado}</div>
-          <div style="font-size:11px;color:#888;">Facturado</div>
-        </div>
-        <div style="flex:1;min-width:100px;background:white;padding:12px;border-radius:8px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-          <div style="font-size:24px;font-weight:bold;color:#27AE60;">$${totalCobrado}</div>
-          <div style="font-size:11px;color:#888;">Cobrado</div>
-        </div>
-        <div style="flex:1;min-width:100px;background:white;padding:12px;border-radius:8px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-          <div style="font-size:24px;font-weight:bold;color:#E24B4A;">$${pendienteCobro}</div>
-          <div style="font-size:11px;color:#888;">Por cobrar</div>
-        </div>
-        <div style="flex:1;min-width:100px;background:white;padding:12px;border-radius:8px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-          <div style="font-size:24px;font-weight:bold;color:#8E44AD;">${clientesUnicos.size}</div>
-          <div style="font-size:11px;color:#888;">Clientes</div>
-        </div>
+        <iframe id="iframe-compartir" src="" allowfullscreen style="display:none;width:100%;height:100%;border:none;"></iframe>
       </div>
-
-      <!-- Tabla proyectos -->
-      ${listaProyectos.length ? `
-        <h3 style="color:#1F3A5F;font-size:13px;margin:0 0 8px;">📋 Detalle de proyectos</h3>
-        <table style="width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;font-size:12px;">
-          <thead>
-            <tr style="background:#1F3A5F;color:white;">
-              <th style="padding:8px 10px;text-align:left;">Proyecto</th>
-              <th style="padding:8px 10px;text-align:left;">Cliente</th>
-              <th style="padding:8px 10px;text-align:left;">Precio</th>
-              <th style="padding:8px 10px;text-align:left;">Cobrado</th>
-              <th style="padding:8px 10px;text-align:left;">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${listaProyectos.map(filaP).join("")}
-          </tbody>
-        </table>
-      ` : `<p style="text-align:center;color:#888;">Sin proyectos en ${mesNombre}.</p>`}
-
+      <a class="btn-descarga btn-secundario" href="#" id="btn-compartir" target="_blank">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Descargar video para compartir
+      </a>
     </div>
-    <div style="background:#1F3A5F;padding:10px 20px;border-radius:0 0 8px 8px;text-align:center;">
-      <p style="color:rgba(255,255,255,0.5);font-size:10px;margin:0;">Generado automáticamente · Synergy Productora</p>
-    </div>
-  </div>`;
 
-  MailApp.sendEmail({
-    to: EMAIL_SYNERGY,
-    subject: `📅 Cierre ${mesNombre} ${hoy.getFullYear()} · $${totalFacturado} facturados · ${totalProyectos} proyectos`,
-    htmlBody: html
-  });
-}
+    <!-- FOTOGRAFÍAS -->
+    <div class="seccion">
+      <div class="seccion-label">3 · Fotografías</div>
+      <div class="fotos-grid" id="fotos-grid">
+        <div class="foto-placeholder">🏠</div>
+        <div class="foto-placeholder">🏠</div>
+        <div class="foto-placeholder">🏠</div>
+      </div>
+      <a class="btn-descarga btn-secundario" href="#" id="btn-fotos" target="_blank">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Ver y descargar todas las fotografías
+      </a>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <p>Fue un placer trabajar en este proyecto contigo.<br>Espero que este contenido atraiga al comprador ideal y cierres la venta pronto.</p>
+    <a href="mailto:synergy.productora@gmail.com">¿Tienes otro inmueble por vender? Hablemos →</a>
+    <p style="margin-top:16px;">Disponible por 30 días</p>
+  </div>
+
+  <script>
+    // Lee parámetros de la URL automáticamente
+    const p = new URLSearchParams(window.location.search);
+
+    const proyecto  = p.get("p")  || "Proyecto";
+    const cliente   = p.get("c")  || "";
+    const grabacion = p.get("g")  || "—";
+    const entregado = p.get("e")  || "—";
+    const idV1      = p.get("v1") || "";
+    const idV2      = p.get("v2") || "";
+    const linkFotos = p.get("f")  || "";
+
+    // Rellena header
+    document.getElementById("titulo-proyecto").textContent = proyecto;
+    document.getElementById("nombre-cliente").textContent  = cliente;
+    document.getElementById("fecha-shoot").textContent     = grabacion;
+    document.getElementById("fecha-limite").textContent    = entregado;
+
+    // Video principal
+    if (idV1) {
+      document.getElementById("placeholder-principal").style.display = "none";
+      const ifr = document.getElementById("iframe-principal");
+      ifr.src = "https://drive.google.com/file/d/" + idV1 + "/preview";
+      ifr.style.display = "block";
+      document.getElementById("btn-principal").href = "https://drive.google.com/uc?export=download&id=" + idV1;
+    }
+
+    // Video para compartir
+    if (idV2) {
+      document.getElementById("placeholder-compartir").style.display = "none";
+      const ifr2 = document.getElementById("iframe-compartir");
+      ifr2.src = "https://drive.google.com/file/d/" + idV2 + "/preview";
+      ifr2.style.display = "block";
+      document.getElementById("btn-compartir").href = "https://drive.google.com/uc?export=download&id=" + idV2;
+    }
+
+    // Fotos — link a carpeta de Drive
+    if (linkFotos) {
+      document.getElementById("btn-fotos").href = linkFotos;
+    }
+  </script>
+
+</body>
+</html>
