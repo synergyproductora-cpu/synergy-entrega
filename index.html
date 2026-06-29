@@ -74,8 +74,13 @@
       border-radius: 10px;
       overflow: hidden;
       width: 100%;
-      aspect-ratio: 16/9;
       position: relative;
+    }
+    .video-wrap.horizontal { aspect-ratio: 16/9; }
+    .video-wrap.vertical {
+      max-width: 340px;
+      margin: 0 auto;
+      aspect-ratio: 9/16;
     }
     .video-wrap iframe,
     .video-wrap video {
@@ -226,12 +231,12 @@
     <!-- VIDEO PRINCIPAL -->
     <div class="seccion">
       <div class="seccion-label">1 · Video principal</div>
-      <div class="video-wrap">
+      <div class="video-wrap vertical" id="wrap-principal">
         <div class="video-placeholder" id="placeholder-principal">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
           Video principal
         </div>
-        <iframe id="iframe-principal" src="" allowfullscreen style="display:none;width:100%;height:100%;border:none;"></iframe>
+        <iframe id="iframe-principal" src="" allowfullscreen allow="autoplay" style="display:none;width:100%;height:100%;border:none;position:absolute;top:0;left:0;"></iframe>
       </div>
       <a class="btn-descarga" href="#" id="btn-principal" target="_blank">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -239,15 +244,15 @@
       </a>
     </div>
 
-    <!-- VIDEO PARA COMPARTIR -->
+    <!-- VIDEO PARA COMPARTIR (vertical / reel) -->
     <div class="seccion">
       <div class="seccion-label">2 · Video para compartir</div>
-      <div class="video-wrap">
+      <div class="video-wrap vertical" id="wrap-compartir">
         <div class="video-placeholder" id="placeholder-compartir">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
           Video para compartir
         </div>
-        <iframe id="iframe-compartir" src="" allowfullscreen style="display:none;width:100%;height:100%;border:none;"></iframe>
+        <iframe id="iframe-compartir" src="" allowfullscreen allow="autoplay" style="display:none;width:100%;height:100%;border:none;position:absolute;top:0;left:0;"></iframe>
       </div>
       <a class="btn-descarga btn-secundario" href="#" id="btn-compartir" target="_blank">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -296,22 +301,26 @@
     document.getElementById("fecha-shoot").textContent     = grabacion;
     document.getElementById("fecha-limite").textContent    = entregado;
 
-    // Video principal
+    // Video principal (horizontal 16:9)
     if (idV1) {
       document.getElementById("placeholder-principal").style.display = "none";
+      const wrap1 = document.getElementById("wrap-principal");
+      wrap1.style.position = "relative";
       const ifr = document.getElementById("iframe-principal");
       ifr.src = "https://drive.google.com/file/d/" + idV1 + "/preview";
       ifr.style.display = "block";
-      document.getElementById("btn-principal").href = "https://drive.google.com/uc?export=download&id=" + idV1;
+      document.getElementById("btn-principal").href = "https://drive.google.com/file/d/" + idV1 + "/view";
     }
 
-    // Video para compartir
+    // Video para compartir (vertical 9:16)
     if (idV2) {
       document.getElementById("placeholder-compartir").style.display = "none";
+      const wrap2 = document.getElementById("wrap-compartir");
+      wrap2.style.position = "relative";
       const ifr2 = document.getElementById("iframe-compartir");
       ifr2.src = "https://drive.google.com/file/d/" + idV2 + "/preview";
       ifr2.style.display = "block";
-      document.getElementById("btn-compartir").href = "https://drive.google.com/uc?export=download&id=" + idV2;
+      document.getElementById("btn-compartir").href = "https://drive.google.com/file/d/" + idV2 + "/view";
     }
 
     // Fotos — link a carpeta de Drive
